@@ -11,6 +11,7 @@ import twitter_info
 import json, requests
 import sqlite3
 import re
+import pprint
 
 #tweepy setup
 consumer_key = twitter_info.consumer_key
@@ -108,24 +109,38 @@ class Movie(object):
 	def calc_num_languages(self):
 		return len(self.languages)
 
+	def set_movie_id(self, id):
+		self.movie_id = id
+
 
 #define a class called Tweet
 #define __init__ such that it takes a dictionary representing a tweet and stores the values as instance variables
 
 #define class Tweet here:
+#text, id, user, movie, num favs, num rts
 class Tweet(object):
 	def __init__(self, dict):
 		self.text = dict['text']
+		self.num_favorites = dict['favorite_count']
+		self.num_retweets = dict['retweet_count']
+		self.id = dict['id_str']
+		self.user_id = dict['user']['id_str']
 
+	def set_movie(self, m):
+		self.movie = m
 
 
 #define a class called TwitterUser
 #define __init__ such that it takes a dictionary representing a twitter user and stores the values as intance variables
 
 #define class TwitterUser here:
+#user_id, screen_name, num_favs
 class TwitterUser(object):
 	def __init__(self, dict):
-		pass
+		self.user_id = dict['id_str']
+		self.screen_name = dict['screen_name']
+		self.num_favorites = dict['favourites_count']
+		
 
 #create a list of three movie titles
 movie_title_list = ['The Dark Knight', 'Django Unchained', 'Good Will Hunting']
@@ -142,6 +157,7 @@ for range in (0, 1, 2):
 movie_class_list = []
 for range in (0, 1, 2):
 	movie_class_list.append(Movie(movie_dict_list[range]))
+	movie_class_list[range].set_movie_id(range)
 
 
 
@@ -149,8 +165,14 @@ for range in (0, 1, 2):
 
 
 tweet_class_list = []
+
 for range in (0, 1, 2):
-	tweet_class_list.append(get_tweets(movie_class_list[range].title))
+	tweets_dictionary = get_tweets(movie_class_list[range].title)
+	tweets_list = tweets_dictionary['statuses']
+	for tweet in tweets_list:
+		temp = Tweet(tweet)
+		temp.set_movie(movie_class_list[range].title)
+		tweet_class_list.append(temp)
 
 
 #invoke get_twitter_user() on each user in the neighborhood of the previous tweets. This means anybody who posted the tweet or was mentioned. Save this in a list of TwitterUser instances.
@@ -167,7 +189,14 @@ print(twitter_user_set)
 
 twitter_user_class_list = []
 for user in twitter_user_set:
-	twitter_user_class_list.append(get_twitter_user(user))
+	temp = TwitterUser(get_twitter_user(user))
+	twitter_user_class_list.append(temp)
+a = get_tweets("The Dark Knight")
+pp = pprint.PrettyPrinter(indent = 4)
+print(type(a['statuses'][0]))
+
+
+
 #now we have a list of twitter users in the neighborhood
 
 ######DATABASE TIME#########
@@ -179,21 +208,70 @@ for user in twitter_user_set:
 #Movies: ID (primary key), Title, Director, num languages, IMDB rating, top billed actor
 
 #Create database file here:
-conn = sqlite3.connect('project3_tweets.db')
+conn = sqlite3.connect('fp.db')
 cur = conn.cursor()
 
+#ADD MOVIE SEARCH
+cur.execute('DROP TABLE IF EXISTS Tweets')
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Tweets (tweet_id INTEGER PRIMARY KEY, '
+table_spec += 'text TEXT, user_id TEXT, favorites INTEGER, retweets INTEGER)'
+cur.execute(table_spec)
 
+cur.execute('DROP TABLE IF EXISTS Users')
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Users (user_id INTEGER PRIMARY KEY, '
+table_spec += 'screen_name TEXT, num_favs INTEGER)'
+cur.execute(table_spec)
+
+cur.execute('DROP TABLE IF EXISTS Movies')
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Movies (movie_id INTEGER PRIMARY KEY, '
+table_spec += 'title TEXT, director TEXT, num_languages INTEGER, '
+table_spec += 'imdb_rating INTEGER, top_actor TEXT)'
+cur.execute(table_spec)
 
 #Load data from the lists of class instances above into the database file
 
+######LOAD TWEETS########
+tweet_upload = []
+for tweet in tweet_class_list:
+	tweet_upload.append((tweet.id, tweet.text, tweet.user_id, tweet.num_favorites, tweet.num_retweets))
+statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?)'
 
+for t in tweet_upload:
+	cur.execute(statement, t)
+
+conn.commit()
+
+#######LOAD USERS#######
+user_upload = []
+for user in twitter_user_class_list:
+	user_upload.append((user.user_id, user.screen_name, user.num_favorites))
+statement = 'INSERT INTO Users VALUES (?, ?, ?)'
+
+for u in user_upload:
+	cur.execute(statement, u)
+
+conn.commit()
+
+#######LOAD MOVIES######
+movie_upload = []
+for movie in movie_class_list:
+	movie_upload.append((movie.movie_id, movie.title, movie.director, movie.num_languages, movie.rating, movie.actors[0]))
+statement = 'INSERT INTO Movies VALUES (?, ?, ?, ?, ?, ?)'
+
+for m in movie_upload:
+	cur.execute(statement, m)
+
+conn.commit()
 
 
 #Queries and Output
 
 
 
-
+conn.close()
 #####TESTS#####
 #class Tests(unittest.TestCase):
 #	def test_cache(self):
