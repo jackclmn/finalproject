@@ -127,7 +127,7 @@ class Tweet(object):
 		self.user_id = dict['user']['id_str']
 
 	def set_movie(self, m):
-		self.movie = m
+		self.movie_id = m
 
 
 #define a class called TwitterUser
@@ -171,7 +171,7 @@ for range in (0, 1, 2):
 	tweets_list = tweets_dictionary['statuses']
 	for tweet in tweets_list:
 		temp = Tweet(tweet)
-		temp.set_movie(movie_class_list[range].title)
+		temp.set_movie(movie_class_list[range].movie_id)
 		tweet_class_list.append(temp)
 
 
@@ -179,21 +179,23 @@ for range in (0, 1, 2):
 twitter_user_list = []
 
 #find all users in the neighborhood
+regex_list = []
 for range in (0, 1, 2):
-	t = tweet_class_list[range]
+	regex_list.append(get_tweets(movie_class_list[range].title))
+
+for range in (0, 1, 2):
+	t = regex_list[range]
 	re_result = re.findall('\'screen_name\':\s\'([^\']+)', str(t))
 	for user in re_result:
 		twitter_user_list.append(user)
-twitter_user_set = list(set(twitter_user_list))
-print(twitter_user_set)
+twitter_user_set = {x for x in twitter_user_list}
 
 twitter_user_class_list = []
 for user in twitter_user_set:
-	temp = TwitterUser(get_twitter_user(user))
-	twitter_user_class_list.append(temp)
-a = get_tweets("The Dark Knight")
-pp = pprint.PrettyPrinter(indent = 4)
-print(type(a['statuses'][0]))
+	t1 = get_twitter_user(user)
+	t2 = TwitterUser(t1)
+	twitter_user_class_list.append(t2)
+
 
 
 
@@ -215,13 +217,13 @@ cur = conn.cursor()
 cur.execute('DROP TABLE IF EXISTS Tweets')
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets (tweet_id INTEGER PRIMARY KEY, '
-table_spec += 'text TEXT, user_id TEXT, favorites INTEGER, retweets INTEGER)'
+table_spec += 'text TEXT, user_id TEXT, favorites INTEGER, retweets INTEGER, movie_id INTEGER)'
 cur.execute(table_spec)
 
 cur.execute('DROP TABLE IF EXISTS Users')
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Users (user_id INTEGER PRIMARY KEY, '
-table_spec += 'screen_name TEXT, num_favs INTEGER)'
+table_spec += 'screen_name TEXT, favorites INTEGER)'
 cur.execute(table_spec)
 
 cur.execute('DROP TABLE IF EXISTS Movies')
@@ -236,8 +238,8 @@ cur.execute(table_spec)
 ######LOAD TWEETS########
 tweet_upload = []
 for tweet in tweet_class_list:
-	tweet_upload.append((tweet.id, tweet.text, tweet.user_id, tweet.num_favorites, tweet.num_retweets))
-statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?)'
+	tweet_upload.append((tweet.id, tweet.text, tweet.user_id, tweet.num_favorites, tweet.num_retweets, tweet.movie_id))
+statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?, ?)'
 
 for t in tweet_upload:
 	cur.execute(statement, t)
@@ -269,8 +271,45 @@ conn.commit()
 
 ##########Queries and Output##############
 
+output = ""
+
+###Number of Tweets about Each Movie###
+#Dictionary Comprehension
+query = "SELECT M.title, COUNT(text) FROM Tweets T INNER JOIN Movies M ON M.movie_id = T.movie_id GROUP BY M.title"
+cur.execute(query)
+result = {t[0]: t[1] for t in cur.fetchall()}
+output += "\n\nNumber of Tweets about each Movie:\n\n"
+for i in result:
+	output += i + ": " + str(result[i]) + "\n\n"
+output += "**************\n\n"
+
+###Number of Favorites about Each Movie###
+#Dictionary Comprehension
+query = "SELECT M.title, SUM(favorites) FROM Tweets T INNER JOIN Movies M ON M.movie_id = T.movie_id GROUP BY M.title"
+cur.execute(query)
+result = {t[0]: t[1] for t in cur.fetchall()}
+output += "\n\nNumber of Favorites for each Movie:\n\n"
+for i in result:
+	output += i + ": " + str(result[i]) + "\n\n"
+output += "**************\n\n"
+
+###Tweets with >0 Favorites###
+##Sort with key
+select_sql = "SELECT favorites, text FROM Tweets WHERE favorites > 0"
+cur.execute(select_sql)
+result = cur.fetchall()
+result.sort(key=lambda tweet: tweet[0], reverse = True)
+output += "Most Favorited Tweets (more than 0 favorites): \n\n"
+for i in result:
+	output += str(i[0]) + ": " + str(i[1]) + "\n"
+output += "\n"
 
 
+f = open("output.txt", 'w')
+f.write(output)
+f.close()
+
+print(output)
 conn.close()
 #####TESTS#####
 #class Tests(unittest.TestCase):
