@@ -1,0 +1,35 @@
+
+
+Number of Tweets about each Movie:
+
+Django Unchained: 3
+
+Good Will Hunting: 15
+
+The Dark Knight: 15
+
+**************
+
+
+
+Number of Favorites for each Movie:
+
+Django Unchained: 0
+
+Good Will Hunting: 9
+
+The Dark Knight: 3
+
+**************
+
+Most Favorited Tweets (more than 0 favorites): 
+
+3: good will hunting makes me want to DIE why do i love it so much
+2: I watch good will hunting at least once a week
+2: my mutual is snapchatting me while they're watching good will hunting for the first time and honestly i'm more excited than they are
+1: @transstarboy WATCH GOOD WILL HUNTING
+1: @KenziReusch super duper goodie &amp; good will hunting is good but idk m if youll cry :-)
+1: @chriswashere321 The Shawshank Redemption, Cinema Paradiso, 500 Days of Summer, Interstellar and the Dark Knight
+1: @NexusProdgy @NotIn3D @Arminies I'm still waiting for Batman &amp; Robin commentary also. But I quit asking I know it w… https://t.co/lrOawvws53
+1: I promise this year Blade 2 &amp; The Dark Knight Audio Commentaries
+
